@@ -19,3 +19,11 @@ application-local.properties
 # Lokale H2-Datenbank
 data/
 **/src/main/bundles/
+
+# Server-Deployment (deploy.sh): Secrets, Logs, Sperre
+.env
+.github_token
+config/
+deploy.log
+deploy-history.tsv
+.deploy.lock

@@ -99,6 +99,20 @@ billing.balance().ifPresent(b -> ...);           // leer, wenn Billing aus/nicht
 
 Namen zu UserIds kennt der Dienst nur von Benutzern, die sich auch hier angemeldet haben.
 
+## Deployment
+
+Docker-Image aus dem Repo-Wurzelverzeichnis (`Dockerfile`, baut Client + Server), ausgerollt mit
+`./deploy.sh <branch|tag>` (bauen, H2-Volume sichern, starten, Health-Check, sonst Rollback).
+
+| Ort | Compose | Port | Adresse |
+|---|---|---|---|
+| Spiekeroog (QA) | `compose.pi.yml` | 8086 | http://spiekeroog.fritz.box:8086 |
+| IONOS (Prod) | folgt | 8085 | folgt |
+
+Auf dem Server (nicht eingecheckt): `.env` (COMPOSE_PROJECT_NAME, COMPOSE_FILE, HEALTH_URL),
+`.github_token` (read:packages) und `config/application-prod.properties` mit OAuth-Zugangsdaten,
+`witch-auth.first-admin-email` und `witch-billing.app-keys.<app>=<SHA-256-Hash>`.
+
 ## Stand
 
 - [x] Gerüst, Entities, `BillingService`, Tests

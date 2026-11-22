@@ -1,0 +1,34 @@
+# QA-Deployment auf Spiekeroog (claudine, Raspberry Pi). Erreichbar unter http://spiekeroog.fritz.box:8086
+# (8085 ist dort fuer witchgames vorgesehen).
+#
+# .env (nicht eingecheckt):
+#   COMPOSE_PROJECT_NAME=witch-billing
+#   COMPOSE_FILE=compose.pi.yml
+#   HEALTH_URL=http://localhost:8086
+# config/application-prod.properties (chmod 600, nicht eingecheckt):
+#   OAuth-Zugangsdaten, witch-auth.first-admin-email, witch-billing.app-keys.<app>=<SHA-256-Hash>
+# .github_token (chmod 600, nicht eingecheckt): GitHub-Token mit read:packages.
+# Ausrollen: ./deploy.sh <branch|tag>
+services:
+  billing:
+    image: witch-billing:latest
+    build:
+      context: .
+      secrets:
+        - github_token
+    container_name: billing-app
+    ports:
+      - "8086:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    volumes:
+      - ./config:/app/config      # application-prod.properties
+      - billing-data:/app/data    # H2-Datenbank (Konten, Buchungen, Preisliste, Benutzer)
+    restart: unless-stopped
+
+volumes:
+  billing-data:
+
+secrets:
+  github_token:
+    file: ${GITHUB_TOKEN_FILE:-./.github_token}

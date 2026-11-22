@@ -1,0 +1,171 @@
+package de.witchcafe.billing.server.ui;
+
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.IntegerField;
+import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.router.Menu;
+import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.Route;
+
+import de.witchcafe.auth.AppRoles;
+import de.witchcafe.auth.CurrentUser;
+import de.witchcafe.auth.domain.AppUser;
+import de.witchcafe.auth.domain.AppUserRepository;
+import de.witchcafe.billing.server.ledger.BillingAccount;
+import de.witchcafe.billing.server.ledger.BillingEntry;
+import de.witchcafe.billing.server.ledger.BillingService;
+import de.witchcafe.ui.Responsive;
+import de.witchcafe.ui.ViewToolbar;
+import jakarta.annotation.security.RolesAllowed;
+
+/**
+ * Admin: Konten suchen, Buchungen eines Kontos ansehen, manuell Guthaben buchen
+ * (z.B. fuer erbrachte Dienstleistungen) oder korrigieren.
+ * <p>
+ * Namen sind nur fuer Benutzer bekannt, die sich auch hier am Billing-Dienst angemeldet
+ * haben; sonst steht nur die UserId da.
+ */
+@Route("admin/konten")
+@PageTitle("Konten")
+@Menu(order = 90, icon = "vaadin:book-dollar", title = "Konten")
+@RolesAllowed(AppRoles.ADMIN)
+public class AccountsAdminView extends VerticalLayout {
+
+    private static final int MAX_ACCOUNTS = 500;
+
+    private final BillingService billing;
+    private final CurrentUser currentUser;
+    private final Map<String, String> namesByUserId;
+
+    private final TextField search = new TextField();
+    private final Grid<BillingAccount> accountGrid = new Grid<>(BillingAccount.class, false);
+    private final Grid<BillingEntry> entryGrid = Format.entryGrid();
+    private final H3 entryTitle = new H3();
+
+    public AccountsAdminView(BillingService billing, CurrentUser currentUser, AppUserRepository users) {
+        this.billing = billing;
+        this.currentUser = currentUser;
+        this.namesByUserId = users.findAll().stream()
+                .collect(Collectors.toMap(AppUser::getUserId, AppUser::getName, (a, b) -> a));
+        setSizeFull();
+
+        search.setPlaceholder("UserId suchen, z.B. github:");
+        search.setPrefixComponent(VaadinIcon.SEARCH.create());
+        search.setClearButtonVisible(true);
+        search.setValueChangeMode(ValueChangeMode.LAZY);
+        search.addValueChangeListener(e -> refreshAccounts());
+        Responsive.maxWidth(search, "24em");
+
+        Button book = new Button("Buchen", VaadinIcon.PLUS.create(), e -> openBookingDialog(
+                accountGrid.asSingleSelect().getOptionalValue().map(BillingAccount::getUserId).orElse("")));
+        book.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        HorizontalLayout toolbarRow = Responsive.wrappingRow(new HorizontalLayout(search, book));
+
+        accountGrid.addColumn(BillingAccount::getUserId).setHeader("UserId").setAutoWidth(true);
+        var nameColumn = accountGrid.addColumn(a -> namesByUserId.getOrDefault(a.getUserId(), ""))
+                .setHeader("Name").setAutoWidth(true);
+        accountGrid.addComponentColumn(a -> Format.creditsBadge(a.getBalance())).setHeader("Kontostand")
+                .setAutoWidth(true).setFlexGrow(0);
+        var sinceColumn = accountGrid.addColumn(a -> Format.dateTime(a.getCreatedAt())).setHeader("Seit")
+                .setAutoWidth(true).setFlexGrow(0);
+        Responsive.hideOnMobile(accountGrid, nameColumn, sinceColumn);
+        accountGrid.asSingleSelect().addValueChangeListener(e -> showEntries(e.getValue()));
+        accountGrid.setHeight("40%");
+
+        entryGrid.setSizeFull();
+        entryTitle.getStyle().set("margin", "0");
+
+        add(new ViewToolbar("Konten"), toolbarRow, accountGrid, entryTitle, entryGrid);
+        refreshAccounts();
+        showEntries(null);
+    }
+
+    private void refreshAccounts() {
+        accountGrid.setItems(billing.accounts(search.getValue(), MAX_ACCOUNTS));
+    }
+
+    private void showEntries(BillingAccount account) {
+        if (account == null) {
+            entryTitle.setText("Konto auswählen, um die Buchungen zu sehen");
+            entryGrid.setItems();
+            return;
+        }
+        entryTitle.setText("Buchungen von " + label(account.getUserId()));
+        entryGrid.setItems(billing.recentEntries(account.getUserId(), MyCreditsView.MAX_ENTRIES));
+    }
+
+    private void openBookingDialog(String userId) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Guthaben buchen");
+
+        TextField userField = new TextField("UserId (provider:id)");
+        userField.setValue(userId);
+        userField.setRequired(true);
+        userField.setHelperText("Neue Konten entstehen beim ersten Buchen, mit Startguthaben.");
+
+        IntegerField creditsField = new IntegerField("Credits");
+        creditsField.setHelperText("Positiv = Gutschrift, negativ = Korrektur");
+        creditsField.setStepButtonsVisible(true);
+        creditsField.setRequired(true);
+
+        TextArea noteField = new TextArea("Begründung");
+        noteField.setPlaceholder("z.B. 20 Quizfragen Korrektur gelesen");
+        noteField.setMaxLength(500);
+        noteField.setRequired(true);
+
+        FormLayout form = new FormLayout(userField, creditsField, noteField);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+
+        Button save = new Button("Buchen", e -> {
+            Integer credits = creditsField.getValue();
+            if (userField.isEmpty() || credits == null || credits == 0 || noteField.getValue().isBlank()) {
+                Notification.show("Bitte UserId, Credits (nicht 0) und Begründung angeben");
+                return;
+            }
+            String target = userField.getValue().trim();
+            try {
+                var booking = billing.adminBooking(target, credits, noteField.getValue().trim(),
+                        currentUser.require().getUserId().toString());
+                dialog.close();
+                Notification n = Notification.show(Format.signed(credits) + " für " + label(target)
+                        + " gebucht, neuer Stand " + booking.balanceAfter(), 4000, Notification.Position.BOTTOM_END);
+                n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                refreshAccounts();
+                accountGrid.getListDataView().getItems()
+                        .filter(a -> a.getUserId().equals(target)).findFirst()
+                        .ifPresentOrElse(accountGrid::select, () -> showEntries(null));
+            } catch (IllegalArgumentException ex) {
+                Notification n = Notification.show(ex.getMessage());
+                n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        dialog.add(form);
+        dialog.getFooter().add(new Button("Abbrechen", e -> dialog.close()), save);
+        Responsive.dialog(dialog, "32em");
+        dialog.open();
+        (userId.isEmpty() ? userField : creditsField).focus();
+    }
+
+    private String label(String userId) {
+        String name = namesByUserId.get(userId);
+        return name == null ? userId : name + " (" + userId + ")";
+    }
+}

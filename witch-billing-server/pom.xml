@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Zentraler Billing-Dienst fuer alle WitchCafe-Apps (Paket de.witchcafe.billing.server):
+          - Buchungsjournal (Verbrauch, Beitraege, Admin-Buchungen) und Kontostand pro Benutzer
+          - Preisliste pro App und Feature
+          - REST-API fuer die Apps (API-Key pro App), Vaadin-Oberflaeche fuer Admin und Nutzer
+    -->
+    <parent>
+        <groupId>de.witchcafe</groupId>
+        <artifactId>witch-parent</artifactId>
+        <version>1.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <artifactId>witch-billing-server</artifactId>
+    <version>0.1.0</version>
+    <packaging>jar</packaging>
+    <name>witch-billing-server</name>
+
+    <properties>
+        <!-- App wird nicht als Maven-Artefakt veroeffentlicht -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>de.witchcafe</groupId>
+            <artifactId>witch-ui</artifactId>
+        </dependency>
+        <!-- Produktion: MariaDB auf IONOS (lokal H2 aus witch-parent) -->
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Datentypen der REST-API, gemeinsam mit den Apps -->
+        <dependency>
+            <groupId>de.witchcafe</groupId>
+            <artifactId>witch-billing-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>com.vaadin</groupId>
+                <artifactId>vaadin-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- damit Maven witch-parent findet, wenn witch-base nicht lokal installiert ist -->
+    <repositories>
+        <repository>
+            <id>github</id>
+            <name>GitHub FrankS68 Maven Packages</name>
+            <url>https://maven.pkg.github.com/FrankS68/witch-auth</url>
+            <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+    </repositories>
+</project>

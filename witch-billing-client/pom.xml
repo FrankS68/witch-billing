@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Client-Bibliothek fuer den Billing-Dienst (Paket de.witchcafe.billing.client).
+        Apps (Quiz, Games, DerGarten) binden sie ein, um Verbrauch zu buchen, Beitraege
+        gutzuschreiben und den Kontostand abzufragen.
+
+        Bewusst nicht auf witch-parent aufgesetzt, damit sie auch in Apps mit eigenem
+        Spring-Boot-Parent (DerGarten) ohne Vaadin-Ballast funktioniert.
+
+        Enthaelt ausserdem die Datentypen der REST-API (Paket ...client.api), die der
+        Server mitbenutzt.
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>de.witchcafe</groupId>
+    <artifactId>witch-billing-client</artifactId>
+    <version>0.1.0</version>
+    <packaging>jar</packaging>
+    <name>witch-billing-client</name>
+
+    <properties>
+        <java.version>21</java.version>
+        <witch-auth.version>1.0.0-SNAPSHOT</witch-auth.version>
+        <!-- siehe witch-parent: 3.5.x laeuft nicht in Eclipse/m2e -->
+        <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+        <maven.deploy.skip>false</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <!-- RestClient fuer die Aufrufe des Billing-Dienstes -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
+        </dependency>
+        <!-- Optional: wenn vorhanden, wird der angemeldete Benutzer automatisch verwendet -->
+        <dependency>
+            <groupId>de.witchcafe</groupId>
+            <artifactId>witch-auth</artifactId>
+            <version>${witch-auth.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub FrankS68 Maven Packages</name>
+            <url>https://maven.pkg.github.com/FrankS68/witch-billing</url>
+        </repository>
+    </distributionManagement>
+
+    <repositories>
+        <repository>
+            <id>github</id>
+            <name>GitHub FrankS68 Maven Packages</name>
+            <url>https://maven.pkg.github.com/FrankS68/witch-auth</url>
+            <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+    </repositories>
+</project>

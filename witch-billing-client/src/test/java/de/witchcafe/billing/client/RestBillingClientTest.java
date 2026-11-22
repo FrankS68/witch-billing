@@ -172,7 +172,7 @@ class RestBillingClientTest {
     @Test
     void kontostand() {
         var client = client(false);
-        server.expect(requestTo(URL + "/api/balance/github:4711"))
+        server.expect(requestTo(URL + "/api/balance/github%3A4711"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                         {"userId":"github:4711","balance":80}""", MediaType.APPLICATION_JSON));
@@ -183,7 +183,7 @@ class RestBillingClientTest {
     @Test
     void kontostandBeiServerfehlerLeer() {
         var client = client(false);
-        server.expect(ExpectedCount.manyTimes(), requestTo(URL + "/api/balance/github:4711"))
+        server.expect(ExpectedCount.manyTimes(), requestTo(URL + "/api/balance/github%3A4711"))
                 .andRespond(withServerError());
 
         assertThat(client.balance(USER)).isEmpty();

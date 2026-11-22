@@ -132,4 +132,15 @@ class BillingApiControllerTest {
                 .andExpect(jsonPath("$.userId").value("github:4711"))
                 .andExpect(jsonPath("$.balance").value(80));
     }
+
+    @Test
+    void kontostandMitKodiertemDoppelpunkt() throws Exception {
+        // so schickt der RestClient die UserId (":" als %3A)
+        when(billing.balance("github:4711")).thenReturn(80L);
+
+        mvc.perform(get(java.net.URI.create("/api/balance/github%3A4711"))
+                        .header("Authorization", "Bearer quiz-test-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value("github:4711"));
+    }
 }

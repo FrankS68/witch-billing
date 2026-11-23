@@ -75,7 +75,10 @@ public class AccountsAdminView extends VerticalLayout {
                 accountGrid.asSingleSelect().getOptionalValue().map(BillingAccount::getUserId).orElse("")));
         book.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        HorizontalLayout toolbarRow = Responsive.wrappingRow(new HorizontalLayout(search, book));
+        // Die Liste laedt nur beim Oeffnen; neue Konten aus den Apps erscheinen erst hiermit (oder per Reload)
+        Button reload = new Button("Aktualisieren", VaadinIcon.REFRESH.create(), e -> reload());
+
+        HorizontalLayout toolbarRow = Responsive.wrappingRow(new HorizontalLayout(search, book, reload));
 
         accountGrid.addColumn(BillingAccount::getUserId).setHeader("UserId").setAutoWidth(true);
         var nameColumn = accountGrid.addColumn(a -> namesByUserId.getOrDefault(a.getUserId(), ""))
@@ -98,6 +101,15 @@ public class AccountsAdminView extends VerticalLayout {
 
     private void refreshAccounts() {
         accountGrid.setItems(billing.accounts(search.getValue(), MAX_ACCOUNTS));
+    }
+
+    /** Konten neu laden; das gewaehlte Konto bleibt ausgewaehlt und seine Buchungen werden neu geholt. */
+    private void reload() {
+        String selected = accountGrid.asSingleSelect().getOptionalValue().map(BillingAccount::getUserId).orElse(null);
+        refreshAccounts();
+        accountGrid.getListDataView().getItems()
+                .filter(a -> a.getUserId().equals(selected)).findFirst()
+                .ifPresentOrElse(accountGrid::select, () -> showEntries(null));
     }
 
     private void showEntries(BillingAccount account) {

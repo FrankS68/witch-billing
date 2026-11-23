@@ -12,7 +12,6 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -69,7 +68,7 @@ public class AccountsAdminView extends VerticalLayout {
         search.setClearButtonVisible(true);
         search.setValueChangeMode(ValueChangeMode.LAZY);
         search.addValueChangeListener(e -> refreshAccounts());
-        Responsive.maxWidth(search, "24em");
+        Responsive.maxWidth(search, "18em");
 
         Button book = new Button("Buchen", VaadinIcon.PLUS.create(), e -> openBookingDialog(
                 accountGrid.asSingleSelect().getOptionalValue().map(BillingAccount::getUserId).orElse("")));
@@ -77,8 +76,6 @@ public class AccountsAdminView extends VerticalLayout {
 
         // Die Liste laedt nur beim Oeffnen; neue Konten aus den Apps erscheinen erst hiermit (oder per Reload)
         Button reload = new Button("Aktualisieren", VaadinIcon.REFRESH.create(), e -> reload());
-
-        HorizontalLayout toolbarRow = Responsive.wrappingRow(new HorizontalLayout(search, book, reload));
 
         accountGrid.addColumn(BillingAccount::getUserId).setHeader("UserId").setAutoWidth(true);
         var nameColumn = accountGrid.addColumn(a -> namesByUserId.getOrDefault(a.getUserId(), ""))
@@ -90,11 +87,14 @@ public class AccountsAdminView extends VerticalLayout {
         Responsive.hideOnMobile(accountGrid, nameColumn, sinceColumn);
         accountGrid.asSingleSelect().addValueChangeListener(e -> showEntries(e.getValue()));
         accountGrid.setHeight("40%");
+        // 40 % bleiben bei niedrigen Fenstern sonst nur eine Zeile, weitere Konten sind dann unsichtbar
+        accountGrid.setMinHeight("16em");
 
         entryGrid.setSizeFull();
         entryTitle.getStyle().set("margin", "0");
 
-        add(new ViewToolbar("Konten"), toolbarRow, accountGrid, entryTitle, entryGrid);
+        // Suchfeld und Knoepfe in der ViewToolbar: witch-ui holt sie in die obere Leiste
+        add(new ViewToolbar("Konten", search, book, reload), accountGrid, entryTitle, entryGrid);
         refreshAccounts();
         showEntries(null);
     }

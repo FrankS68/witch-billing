@@ -20,6 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
  * und Kontostand in derselben Transaktion. Damit koennen parallele Anfragen das Konto
  * nicht ins Minus bringen und Wiederholungen nicht doppelt buchen.
  * <p>
+ * Mit {@code witch-billing.allow-debt=true} wird Verbrauch auch ohne Guthaben gebucht,
+ * das Konto geht dann ins Minus ("Schulden"). Die Apps sperren dann nicht, sondern zeigen
+ * Werbung (siehe witch-billing-vaadin).
+ * <p>
  * Ein Konto entsteht beim ersten Buchen automatisch, mit dem Startguthaben
  * {@code witch-billing.welcome-credits} als eigener Buchung. Laufen fuer einen ganz neuen
  * Benutzer zwei Anfragen exakt gleichzeitig, scheitert eine davon am Primaerschluessel;
@@ -38,20 +42,29 @@ public class BillingService {
     private final BillingEntryRepository entries;
     private final BillingPriceRepository prices;
     private final long welcomeCredits;
+    private final boolean allowDebt;
 
     public BillingService(BillingAccountRepository accounts, BillingEntryRepository entries,
                           BillingPriceRepository prices,
-                          @Value("${witch-billing.welcome-credits:100}") long welcomeCredits) {
+                          @Value("${witch-billing.welcome-credits:100}") long welcomeCredits,
+                          @Value("${witch-billing.allow-debt:false}") boolean allowDebt) {
         this.accounts       = accounts;
         this.entries        = entries;
         this.prices         = prices;
         this.welcomeCredits = welcomeCredits;
+        this.allowDebt      = allowDebt;
+    }
+
+    /** true: Verbrauch wird auch ohne Guthaben gebucht, das Konto geht ins Minus. */
+    public boolean isAllowDebt() {
+        return allowDebt;
     }
 
     /**
      * Verbrauch buchen. Kostet {@code quantity} mal den Preis des Features.
      *
-     * @throws InsufficientCreditsException wenn das Guthaben nicht reicht (nichts gebucht)
+     * @throws InsufficientCreditsException wenn das Guthaben nicht reicht und Schulden nicht
+     *                                      erlaubt sind (nichts gebucht)
      * @throws UnknownFeatureException      wenn es keinen aktiven COST-Preis gibt
      */
     public Booking charge(String app, String userId, String feature, int quantity, String idempotencyKey) {
@@ -191,7 +204,7 @@ public class BillingService {
         long credits;
         EntryKind kind;
         if (expected == PriceKind.COST) {
-            if (account.getBalance() < amount) {
+            if (!allowDebt && account.getBalance() < amount) {
                 throw new InsufficientCreditsException(userId, account.getBalance(), amount);
             }
             credits = -amount;

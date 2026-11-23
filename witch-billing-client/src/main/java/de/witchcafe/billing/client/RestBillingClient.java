@@ -13,6 +13,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import de.witchcafe.billing.client.api.AdsResponse;
 import de.witchcafe.billing.client.api.BalanceResponse;
 import de.witchcafe.billing.client.api.BookingRequest;
 import de.witchcafe.billing.client.api.BookingResponse;
@@ -66,6 +67,19 @@ public class RestBillingClient implements BillingClient {
         } catch (BillingUnavailableException e) {
             log.warn("Kontostand von {} nicht abrufbar: {}", userId, e.getMessage());
             return OptionalLong.empty();
+        }
+    }
+
+    @Override
+    public Optional<AdsResponse> ads(String userId) {
+        try {
+            return Optional.ofNullable(call(true, () -> rest.get()
+                    .uri("/api/ads/{userId}", userId)
+                    .retrieve()
+                    .body(AdsResponse.class)));
+        } catch (BillingException e) {
+            log.warn("Werbung fuer {} nicht abrufbar: {}", userId, e.getMessage());
+            return Optional.empty();
         }
     }
 

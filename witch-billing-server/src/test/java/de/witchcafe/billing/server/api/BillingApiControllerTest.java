@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -20,6 +22,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import de.witchcafe.billing.server.ads.AdAudience;
+import de.witchcafe.billing.server.ads.AdKind;
+import de.witchcafe.billing.server.ads.AdService;
+import de.witchcafe.billing.server.ads.BillingAd;
 import de.witchcafe.billing.server.ledger.BillingService;
 import de.witchcafe.billing.server.ledger.Booking;
 import de.witchcafe.billing.server.ledger.InsufficientCreditsException;
@@ -40,6 +46,7 @@ class BillingApiControllerTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean BillingService billing;
+    @MockitoBean AdService ads;
 
     private static MockHttpServletRequestBuilder postJson(String url, String key, String body) {
         var request = post(url).contentType(MediaType.APPLICATION_JSON).content(body);
@@ -142,5 +149,21 @@ class BillingApiControllerTest {
                         .header("Authorization", "Bearer quiz-test-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value("github:4711"));
+    }
+
+    @Test
+    void werbungFuerDieAppDesKeys() throws Exception {
+        BillingAd ad = new BillingAd(AdKind.HOUSE, AdAudience.DEBTORS);
+        ad.setTitle("Probier den Garten");
+        ad.setLinkUrl("https://garten.xn--srth-5qa.org");
+        when(ads.adsFor("quiz", "github:4711")).thenReturn(new AdService.UserAds(-5, true, List.of(ad)));
+
+        mvc.perform(get("/api/ads/github:4711").header("Authorization", "Bearer quiz-test-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(-5))
+                .andExpect(jsonPath("$.inDebt").value(true))
+                .andExpect(jsonPath("$.ads[0].kind").value("HOUSE"))
+                .andExpect(jsonPath("$.ads[0].title").value("Probier den Garten"));
+        mvc.perform(get("/api/ads/github:4711")).andExpect(status().isUnauthorized());
     }
 }

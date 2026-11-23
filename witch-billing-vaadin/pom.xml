@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <!--
+        Werbung in den Vaadin-Apps (Paket de.witchcafe.billing.vaadin): wer im Minus ist, wird
+        nicht gesperrt, sondern sieht ein Werbe-Banner und beim Start einer Partie eine kurze
+        Einblendung. Die Werbung kommt aus dem Billing-Dienst (/admin/werbung).
+        Einbinden genuegt: das Banner haengt sich per Auto-Configuration selbst in jede Seite,
+        ohne Aenderung an witch-ui oder am Layout der App. Vaadin bringt die App mit.
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>de.witchcafe</groupId>
+    <artifactId>witch-billing-vaadin</artifactId>
+    <version>0.2.0</version>
+    <packaging>jar</packaging>
+    <name>witch-billing-vaadin</name>
+
+    <properties>
+        <java.version>21</java.version>
+        <!-- wie witch-parent; zur Laufzeit gilt die Vaadin-Version der App -->
+        <vaadin.version>25.3.0</vaadin.version>
+        <!-- siehe witch-parent: 3.5.x laeuft nicht in Eclipse/m2e -->
+        <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+        <maven.deploy.skip>false</maven.deploy.skip>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.vaadin</groupId>
+                <artifactId>vaadin-bom</artifactId>
+                <version>${vaadin.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>de.witchcafe</groupId>
+            <artifactId>witch-billing-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <!-- bringt die App mit (witch-parent: vaadin + vaadin-spring-boot-starter) -->
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>vaadin-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub FrankS68 Maven Packages</name>
+            <url>https://maven.pkg.github.com/FrankS68/witch-billing</url>
+        </repository>
+    </distributionManagement>
+
+    <repositories>
+        <repository>
+            <id>github</id>
+            <name>GitHub FrankS68 Maven Packages</name>
+            <url>https://maven.pkg.github.com/FrankS68/witch-auth</url>
+            <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+    </repositories>
+</project>

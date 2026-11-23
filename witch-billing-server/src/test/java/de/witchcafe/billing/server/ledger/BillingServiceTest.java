@@ -14,7 +14,8 @@ import org.springframework.test.context.TestPropertySource;
 
 @DataJpaTest
 @Import(BillingService.class)
-@TestPropertySource(properties = "witch-billing.welcome-credits=100")
+// allow-debt ausdruecklich aus: application.properties schaltet es fuer den Betrieb ein
+@TestPropertySource(properties = {"witch-billing.welcome-credits=100", "witch-billing.allow-debt=false"})
 class BillingServiceTest {
 
     private static final String USER = "github:4711";

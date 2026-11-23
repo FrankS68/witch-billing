@@ -12,6 +12,7 @@ WORKDIR /app
 
 COPY pom.xml .
 COPY witch-billing-client ./witch-billing-client
+COPY witch-billing-vaadin ./witch-billing-vaadin
 COPY witch-billing-server ./witch-billing-server
 RUN --mount=type=cache,target=/root/.m2/repository \
     --mount=type=secret,id=github_token,required=true \

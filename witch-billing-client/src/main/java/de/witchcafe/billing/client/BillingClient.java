@@ -3,6 +3,7 @@ package de.witchcafe.billing.client;
 import java.util.Optional;
 import java.util.OptionalLong;
 
+import de.witchcafe.billing.client.api.AdsResponse;
 import de.witchcafe.billing.client.api.BookingResponse;
 
 /**
@@ -57,6 +58,20 @@ public interface BillingClient {
     /** Kontostand des angemeldeten Benutzers; leer auch, wenn niemand angemeldet ist. */
     default OptionalLong balance() {
         return currentUserId().map(this::balance).orElse(OptionalLong.empty());
+    }
+
+    /**
+     * Werbung und Schulden-Status eines Benutzers in dieser App.
+     *
+     * @return leer, wenn Billing aus ist oder der Dienst nicht erreichbar ist
+     */
+    default Optional<AdsResponse> ads(String userId) {
+        return Optional.empty();
+    }
+
+    /** Werbung fuer den angemeldeten Benutzer; leer auch, wenn niemand angemeldet ist. */
+    default Optional<AdsResponse> ads() {
+        return currentUserId().flatMap(this::ads);
     }
 
     /** witch-auth-UserId des angemeldeten Benutzers, falls witch-auth vorhanden und jemand angemeldet ist. */

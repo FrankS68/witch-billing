@@ -188,4 +188,42 @@ class RestBillingClientTest {
 
         assertThat(client.balance(USER)).isEmpty();
     }
+
+    @Test
+    void werbungWirdAbgerufen() {
+        var client = client(true);
+        server.expect(requestTo(URL + "/api/ads/github%3A4711"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {"userId":"github:4711","balance":-5,"inDebt":true,"ads":[
+                          {"id":1,"kind":"HOUSE","title":"Probier den Garten","text":null,
+                           "imageUrl":null,"linkUrl":"https://garten.example","adsenseSlot":null}]}""",
+                        MediaType.APPLICATION_JSON));
+
+        var ads = client.ads().orElseThrow();
+
+        assertThat(ads.inDebt()).isTrue();
+        assertThat(ads.balance()).isEqualTo(-5);
+        assertThat(ads.ads()).singleElement().satisfies(ad -> {
+            assertThat(ad.kind()).isEqualTo("HOUSE");
+            assertThat(ad.title()).isEqualTo("Probier den Garten");
+        });
+        server.verify();
+    }
+
+    @Test
+    void werbungBeiDienstausfallLeer() {
+        var client = client(false);
+        server.expect(ExpectedCount.manyTimes(), requestTo(URL + "/api/ads/github%3A4711"))
+                .andRespond(withServerError());
+
+        assertThat(client.ads()).isEmpty();
+    }
+
+    @Test
+    void schuldenNachBuchung() {
+        assertThat(new BookingResponse(1, -40, -30, false).isInDebt()).isTrue();
+        assertThat(new BookingResponse(1, -40, 0, false).isInDebt()).isFalse();
+        assertThat(BookingResponse.NOT_BOOKED.isInDebt()).isFalse();
+    }
 }

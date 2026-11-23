@@ -20,4 +20,9 @@ public record BookingResponse(long entryId, long credits, long balanceAfter, boo
     public boolean isBooked() {
         return entryId != 0;
     }
+
+    /** true, wenn gebucht wurde und das Konto danach im Minus ist (die App soll Werbung zeigen). */
+    public boolean isInDebt() {
+        return isBooked() && balanceAfter < 0;
+    }
 }

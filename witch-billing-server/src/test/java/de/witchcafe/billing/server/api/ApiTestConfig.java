@@ -10,6 +10,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
  */
 @SpringBootConfiguration
 @EnableWebSecurity
-@Import({ApiSecurityConfig.class, BillingApiController.class, ApiErrorHandler.class})
+@Import({ApiSecurityConfig.class, BillingApiController.class, AdsApiController.class, ApiErrorHandler.class})
 class ApiTestConfig {
 }

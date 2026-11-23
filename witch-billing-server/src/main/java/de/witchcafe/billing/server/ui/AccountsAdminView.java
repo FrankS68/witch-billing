@@ -9,6 +9,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -71,20 +72,22 @@ public class AccountsAdminView extends VerticalLayout {
         Responsive.maxWidth(search, "18em");
 
         Button book = new Button("Buchen", VaadinIcon.PLUS.create(), e -> openBookingDialog(
-                accountGrid.asSingleSelect().getOptionalValue().map(BillingAccount::getUserId).orElse("")));
+                accountGrid.asSingleSelect().getOptionalValue().map(AccountsAdminView::key).orElse("")));
         book.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         // Die Liste laedt nur beim Oeffnen; neue Konten aus den Apps erscheinen erst hiermit (oder per Reload)
         Button reload = new Button("Aktualisieren", VaadinIcon.REFRESH.create(), e -> reload());
 
-        accountGrid.addColumn(a -> a.getLabel() == null ? "" : a.getLabel()).setHeader("E-Mail / Handle").setAutoWidth(true);
+        // E-Mail bzw. Handle ist die fuehrende Kennung; die technische UserId nur, solange das
+        // Konto noch keine hat (grau, mit Hinweis), sonst als Tooltip
+        accountGrid.addComponentColumn(AccountsAdminView::accountCell).setHeader("Konto (E-Mail / Handle)")
+                .setAutoWidth(true).setFlexGrow(1);
         var nameColumn = accountGrid.addColumn(this::name).setHeader("Name").setAutoWidth(true);
-        var idColumn = accountGrid.addColumn(BillingAccount::getUserId).setHeader("UserId").setAutoWidth(true);
         accountGrid.addComponentColumn(a -> Format.creditsBadge(a.getBalance())).setHeader("Kontostand")
                 .setAutoWidth(true).setFlexGrow(0);
         var sinceColumn = accountGrid.addColumn(a -> Format.dateTime(a.getCreatedAt())).setHeader("Seit")
                 .setAutoWidth(true).setFlexGrow(0);
-        Responsive.hideOnMobile(accountGrid, nameColumn, idColumn, sinceColumn);
+        Responsive.hideOnMobile(accountGrid, nameColumn, sinceColumn);
         accountGrid.asSingleSelect().addValueChangeListener(e -> showEntries(e.getValue()));
         accountGrid.setHeight("40%");
         // 40 % bleiben bei niedrigen Fenstern sonst nur eine Zeile, weitere Konten sind dann unsichtbar
@@ -157,7 +160,7 @@ public class AccountsAdminView extends VerticalLayout {
                 var booking = billing.adminBooking(target, credits, noteField.getValue().trim(),
                         currentUser.require().getUserId().toString());
                 dialog.close();
-                Notification n = Notification.show(Format.signed(credits) + " für " + label(target)
+                Notification n = Notification.show(Format.signed(credits) + " für " + userField.getValue().trim()
                         + " gebucht, neuer Stand " + booking.balanceAfter(), 4000, Notification.Position.BOTTOM_END);
                 n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 refreshAccounts();
@@ -178,16 +181,28 @@ public class AccountsAdminView extends VerticalLayout {
         (userId.isEmpty() ? userField : creditsField).focus();
     }
 
+    /** Kennung fuer Anzeige und Buchen: E-Mail bzw. Handle, ohne die die UserId. */
+    static String key(BillingAccount account) {
+        return account.getLabel() != null ? account.getLabel() : account.getUserId();
+    }
+
+    private static Span accountCell(BillingAccount account) {
+        Span cell = new Span(key(account));
+        if (account.getLabel() != null) {
+            cell.getStyle().set("font-weight", "600");
+            cell.setTitle(account.getUserId());
+        } else {
+            cell.getStyle().set("color", "var(--lumo-secondary-text-color)");
+            cell.setTitle("Noch ohne E-Mail/Handle – kommt mit der nächsten Buchung aus einer App");
+        }
+        return cell;
+    }
+
     /** Name aus der App, sonst aus der Benutzerverwaltung des Billing-Dienstes. */
     private String name(BillingAccount account) {
         if (account.getDisplayName() != null) {
             return account.getDisplayName();
         }
         return namesByUserId.getOrDefault(account.getUserId(), "");
-    }
-
-    private String label(String userId) {
-        String name = namesByUserId.get(userId);
-        return name == null ? userId : name + " (" + userId + ")";
     }
 }

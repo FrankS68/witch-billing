@@ -32,6 +32,14 @@ public class BillingAccount {
     @Version
     private long version;
 
+    /** Lesbare Kennung aus der App (E-Mail, ohne E-Mail z.B. Bluesky-Handle), fuer den Admin. */
+    @Column(length = 255)
+    private String label;
+
+    /** Anzeigename aus der App. */
+    @Column(length = 255)
+    private String displayName;
+
     protected BillingAccount() {}
 
     BillingAccount(String userId) {
@@ -41,6 +49,18 @@ public class BillingAccount {
     public String getUserId()     { return userId; }
     public long getBalance()      { return balance; }
     public Instant getCreatedAt() { return createdAt; }
+    public String getLabel()      { return label; }
+    public String getDisplayName() { return displayName; }
+
+    /** Kennung und Name aus der letzten Buchung einer App merken (leere Werte aendern nichts). */
+    void updateIdentity(String newLabel, String newName) {
+        if (newLabel != null && !newLabel.isBlank()) {
+            this.label = newLabel.trim();
+        }
+        if (newName != null && !newName.isBlank()) {
+            this.displayName = newName.trim();
+        }
+    }
 
     void add(long credits) {
         this.balance = Math.addExact(this.balance, credits);

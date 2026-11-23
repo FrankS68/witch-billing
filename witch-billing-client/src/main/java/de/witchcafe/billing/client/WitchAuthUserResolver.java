@@ -26,4 +26,26 @@ class WitchAuthUserResolver implements BillingUserResolver {
         }
         return cu.get().map(user -> user.getUserId().toString());
     }
+
+    /** E-Mail, ohne E-Mail (z.B. Bluesky) der Name, der dort der Handle ist. */
+    @Override
+    public Optional<String> currentUserLabel() {
+        CurrentUser cu = currentUser.getIfAvailable();
+        if (cu == null) {
+            return Optional.empty();
+        }
+        return cu.get().map(user -> {
+            String email = user.getEmail();
+            return email != null && !email.isBlank() ? email : user.getFullName();
+        }).filter(s -> s != null && !s.isBlank());
+    }
+
+    @Override
+    public Optional<String> currentUserName() {
+        CurrentUser cu = currentUser.getIfAvailable();
+        if (cu == null) {
+            return Optional.empty();
+        }
+        return cu.get().map(user -> user.getFullName()).filter(s -> s != null && !s.isBlank());
+    }
 }

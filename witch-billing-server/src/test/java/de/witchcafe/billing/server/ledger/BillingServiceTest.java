@@ -209,4 +209,23 @@ class BillingServiceTest {
         assertThatThrownBy(() -> billing.updatePrice(99999, 1, null, true))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void kontoMerktSichKennungUndIstDarueberAuffindbar() {
+        billing.charge("quiz", "mastodon:1160", "spiel", 1, null, "fse247@mastodon.social", "fse");
+        billing.charge("quiz", "bluesky:did:plc:abc", "spiel", 1, null, "@fse418.bsky.social", null);
+        billing.charge("quiz", "mastodon:1160", "spiel", 1, null, null, null);   // leer aendert nichts
+
+        assertThat(billing.accounts("mastodon.social", 10)).singleElement().satisfies(a -> {
+            assertThat(a.getUserId()).isEqualTo("mastodon:1160");
+            assertThat(a.getLabel()).isEqualTo("fse247@mastodon.social");
+            assertThat(a.getDisplayName()).isEqualTo("fse");
+        });
+        assertThat(billing.accounts("FSE", 10)).hasSize(2);
+        assertThat(billing.resolveUserId("FSE247@mastodon.social")).isEqualTo("mastodon:1160");
+        assertThat(billing.resolveUserId("@fse418.bsky.social")).isEqualTo("bluesky:did:plc:abc");
+        assertThat(billing.resolveUserId("github:4711")).isEqualTo("github:4711");
+        assertThatThrownBy(() -> billing.resolveUserId("unbekannt@example.org"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

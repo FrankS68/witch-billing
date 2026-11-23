@@ -68,7 +68,13 @@ public class BillingService {
      * @throws UnknownFeatureException      wenn es keinen aktiven COST-Preis gibt
      */
     public Booking charge(String app, String userId, String feature, int quantity, String idempotencyKey) {
-        return bookFromPriceList(app, userId, feature, quantity, idempotencyKey, PriceKind.COST);
+        return charge(app, userId, feature, quantity, idempotencyKey, null, null);
+    }
+
+    /** Wie oben; {@code userLabel}/{@code userName} (E-Mail bzw. Handle, Name) merkt sich das Konto. */
+    public Booking charge(String app, String userId, String feature, int quantity, String idempotencyKey,
+                          String userLabel, String userName) {
+        return bookFromPriceList(app, userId, feature, quantity, idempotencyKey, PriceKind.COST, userLabel, userName);
     }
 
     /**
@@ -77,7 +83,13 @@ public class BillingService {
      * @throws UnknownFeatureException wenn es keinen aktiven REWARD-Preis gibt
      */
     public Booking reward(String app, String userId, String feature, int quantity, String idempotencyKey) {
-        return bookFromPriceList(app, userId, feature, quantity, idempotencyKey, PriceKind.REWARD);
+        return reward(app, userId, feature, quantity, idempotencyKey, null, null);
+    }
+
+    /** Wie oben, mit Kennung und Name fuer das Konto. */
+    public Booking reward(String app, String userId, String feature, int quantity, String idempotencyKey,
+                          String userLabel, String userName) {
+        return bookFromPriceList(app, userId, feature, quantity, idempotencyKey, PriceKind.REWARD, userLabel, userName);
     }
 
     /**
@@ -114,11 +126,33 @@ public class BillingService {
 
     // --- Admin: Konten, Auswertung, Preisliste -------------------------------------
 
-    /** Konten, deren UserId {@code filter} enthaelt (leer = alle), nach UserId sortiert. */
+    /** Konten, deren UserId, Kennung (E-Mail/Handle) oder Name {@code filter} enthaelt (leer = alle). */
     @Transactional(readOnly = true)
     public List<BillingAccount> accounts(String filter, int limit) {
-        return accounts.findByUserIdContainingIgnoreCaseOrderByUserIdAsc(
-                filter == null ? "" : filter.trim(), PageRequest.of(0, limit));
+        return accounts.search(filter == null ? "" : filter.trim(), PageRequest.of(0, limit));
+    }
+
+    /**
+     * UserId zu einer Eingabe des Admins: {@code provider:id} unveraendert, sonst die E-Mail bzw.
+     * der Handle eines bestehenden Kontos.
+     *
+     * @throws IllegalArgumentException wenn keine oder mehrere Konten passen
+     */
+    @Transactional(readOnly = true)
+    public String resolveUserId(String input) {
+        String v = input == null ? "" : input.trim();
+        if (v.matches("[^:\\s@]+:\\S+")) {
+            return v;
+        }
+        List<BillingAccount> found = accounts.findByLabelIgnoreCase(v);
+        if (found.isEmpty()) {
+            throw new IllegalArgumentException("Kein Konto mit \"" + v + "\" – neue Konten nur mit UserId (provider:id)");
+        }
+        if (found.size() > 1) {
+            throw new IllegalArgumentException("\"" + v + "\" passt zu mehreren Konten: "
+                    + found.stream().map(BillingAccount::getUserId).toList() + " – bitte UserId angeben");
+        }
+        return found.get(0).getUserId();
     }
 
     /** Verbrauch und Beitraege seit {@code since}, pro App, Feature und Art summiert. */
@@ -175,7 +209,8 @@ public class BillingService {
     // ---------------------------------------------------------------------------------
 
     private Booking bookFromPriceList(String app, String userId, String feature, int quantity,
-                                      String idempotencyKey, PriceKind expected) {
+                                      String idempotencyKey, PriceKind expected,
+                                      String userLabel, String userName) {
         requireText(app, "app");
         requireText(userId, "userId");
         requireText(feature, "feature");
@@ -192,6 +227,7 @@ public class BillingService {
                 .orElseThrow(() -> new UnknownFeatureException(app, feature, expected));
 
         BillingAccount account = lockOrCreate(userId, app);
+        account.updateIdentity(userLabel, userName);
 
         // Erst nach der Kontosperre pruefen, damit zwei gleiche Anfragen nicht beide durchrutschen
         Optional<BillingEntry> previous = idempotencyKey == null ? Optional.empty()

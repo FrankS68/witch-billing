@@ -33,14 +33,14 @@ public class BillingApiController {
     @PostMapping("/usage")
     public BookingResponse usage(@RequestBody BookingRequest request, Authentication app) {
         return toResponse(billing.charge(app.getName(), request.userId(), request.feature(),
-                request.quantity(), request.idempotencyKey()));
+                request.quantity(), request.idempotencyKey(), request.userLabel(), request.userName()));
     }
 
     /** Beitrag gutschreiben. 404 bei unbekanntem Feature. */
     @PostMapping("/contributions")
     public BookingResponse contribution(@RequestBody BookingRequest request, Authentication app) {
         return toResponse(billing.reward(app.getName(), request.userId(), request.feature(),
-                request.quantity(), request.idempotencyKey()));
+                request.quantity(), request.idempotencyKey(), request.userLabel(), request.userName()));
     }
 
     /** Kontostand; fuer unbekannte Benutzer das Startguthaben. */

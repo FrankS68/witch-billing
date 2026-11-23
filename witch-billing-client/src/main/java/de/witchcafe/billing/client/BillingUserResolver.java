@@ -11,4 +11,17 @@ import java.util.Optional;
 public interface BillingUserResolver {
 
     Optional<String> currentUserId();
+
+    /**
+     * Lesbare Kennung des angemeldeten Benutzers fuer den Admin im Billing-Dienst: die E-Mail,
+     * ohne E-Mail (z.B. Bluesky) der Name bzw. Handle. Leer, wenn unbekannt.
+     */
+    default Optional<String> currentUserLabel() {
+        return Optional.empty();
+    }
+
+    /** Anzeigename des angemeldeten Benutzers; leer, wenn unbekannt. */
+    default Optional<String> currentUserName() {
+        return Optional.empty();
+    }
 }

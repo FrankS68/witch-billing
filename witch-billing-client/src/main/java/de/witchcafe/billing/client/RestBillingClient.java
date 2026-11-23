@@ -90,7 +90,8 @@ public class RestBillingClient implements BillingClient {
 
     // ---------------------------------------------------------------------------------
 
-    private BookingResponse book(String path, BookingRequest request) {
+    private BookingResponse book(String path, BookingRequest plain) {
+        BookingRequest request = withIdentity(plain);
         try {
             BookingResponse response = call(request.idempotencyKey() != null, () -> rest.post()
                     .uri(path)
@@ -109,6 +110,31 @@ public class RestBillingClient implements BillingClient {
                     path, request.feature(), request.quantity(), request.userId(), e.getMessage());
             return BookingResponse.NOT_BOOKED;
         }
+    }
+
+    /**
+     * Gilt die Buchung dem angemeldeten Benutzer, gehen E-Mail bzw. Handle und Name mit, damit
+     * der Admin im Billing-Dienst das Konto erkennt. Fehler dabei verhindern keine Buchung.
+     */
+    private BookingRequest withIdentity(BookingRequest r) {
+        if (r.userLabel() != null || r.userName() != null) {
+            return r;
+        }
+        try {
+            if (!userResolver.currentUserId().map(r.userId()::equals).orElse(false)) {
+                return r;
+            }
+            return new BookingRequest(r.userId(), r.feature(), r.quantity(), r.idempotencyKey(),
+                    truncate(userResolver.currentUserLabel().orElse(null)),
+                    truncate(userResolver.currentUserName().orElse(null)));
+        } catch (RuntimeException | LinkageError e) {
+            log.debug("Benutzerangaben fuer {} nicht ermittelbar: {}", r.userId(), e.toString());
+            return r;
+        }
+    }
+
+    private static String truncate(String s) {
+        return s == null || s.length() <= 255 ? s : s.substring(0, 255);
     }
 
     /** Fuehrt den Aufruf aus, wiederholt ihn ggf. einmal bei Netzwerkfehler und uebersetzt Fehler. */

@@ -29,6 +29,7 @@ witch-billing-server/   Zentraler Dienst (de.witchcafe.billing.server), witch-pa
 - Ein optionaler **Idempotenz-Schlüssel** (eindeutig pro App) verhindert Doppelbuchungen bei Wiederholungen.
 - Neue Benutzer bekommen beim ersten Buchen ein Startguthaben (`witch-billing.welcome-credits`, Default 100).
 - Login mit verschiedenen Providern ergibt (noch) getrennte Konten.
+- Seit 0.3.0 schicken die Apps bei Buchungen die E-Mail (ohne E-Mail, z.B. Bluesky, den Handle) und den Namen mit; das Konto merkt sie sich, der Admin sieht, sucht und bucht danach.
 
 ## REST-API
 
@@ -61,7 +62,7 @@ printf %s "$KEY" | sha256sum | cut -d' ' -f1     # -> in den Dienst: BILLING_KEY
 <dependency>
     <groupId>de.witchcafe</groupId>
     <artifactId>witch-billing-client</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
 </dependency>
 ```
 
@@ -100,7 +101,7 @@ Wer im Minus ist, wird nicht gesperrt, sondern sieht Werbung. Einbinden genügt 
 <dependency>
     <groupId>de.witchcafe</groupId>
     <artifactId>witch-billing-vaadin</artifactId>
-    <version>0.2.0</version>   <!-- bringt witch-billing-client mit -->
+    <version>0.3.0</version>   <!-- bringt witch-billing-client mit -->
 </dependency>
 ```
 
@@ -163,4 +164,5 @@ Auf dem Server (nicht eingecheckt): `.env` (COMPOSE_PROJECT_NAME, COMPOSE_FILE, 
 - [x] Quiz als erste App anbinden
 - [x] Deployment auf IONOS, Quiz, DerGarten und Games angebunden
 - [x] 0.2.0: Schulden statt Sperre, Werbung (`/admin/werbung`, `/api/ads`, witch-billing-vaadin)
+- [x] 0.3.0: Apps schicken E-Mail bzw. Handle und Namen mit; Admin sieht, sucht und bucht danach
 - [ ] Flyway statt `ddl-auto=update`

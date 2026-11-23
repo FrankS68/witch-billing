@@ -226,4 +226,28 @@ class RestBillingClientTest {
         assertThat(new BookingResponse(1, -40, 0, false).isInDebt()).isFalse();
         assertThat(BookingResponse.NOT_BOOKED.isInDebt()).isFalse();
     }
+
+    @Test
+    void angemeldeterBenutzerSchicktKennungUndNameMit() {
+        RestClient.Builder builder = RestClient.builder().baseUrl(URL);
+        server = MockRestServiceServer.bindTo(builder).build();
+        BillingUserResolver resolver = new BillingUserResolver() {
+            @Override public Optional<String> currentUserId()    { return Optional.of(USER); }
+            @Override public Optional<String> currentUserLabel() { return Optional.of("frank@example.org"); }
+            @Override public Optional<String> currentUserName()  { return Optional.of("Frank"); }
+        };
+        var client = new RestBillingClient(builder.build(), true, resolver);
+        server.expect(requestTo(URL + "/api/usage"))
+                .andExpect(jsonPath("$.userLabel").value("frank@example.org"))
+                .andExpect(jsonPath("$.userName").value("Frank"))
+                .andRespond(withSuccess(BOOKING, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(URL + "/api/usage"))
+                .andExpect(jsonPath("$.userId").value("github:999"))
+                .andExpect(jsonPath("$.userLabel").doesNotExist())
+                .andRespond(withSuccess(BOOKING, MediaType.APPLICATION_JSON));
+
+        client.charge("ki-fragen", 1);                    // angemeldeter Benutzer: mit Kennung
+        client.charge("github:999", "ki-fragen", 1, "k"); // anderer Benutzer: ohne
+        server.verify();
+    }
 }

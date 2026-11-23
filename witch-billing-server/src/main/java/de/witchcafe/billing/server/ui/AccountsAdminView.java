@@ -63,7 +63,7 @@ public class AccountsAdminView extends VerticalLayout {
                 .collect(Collectors.toMap(AppUser::getUserId, AppUser::getName, (a, b) -> a));
         setSizeFull();
 
-        search.setPlaceholder("UserId suchen, z.B. github:");
+        search.setPlaceholder("E-Mail, Handle, Name oder UserId");
         search.setPrefixComponent(VaadinIcon.SEARCH.create());
         search.setClearButtonVisible(true);
         search.setValueChangeMode(ValueChangeMode.LAZY);
@@ -77,14 +77,14 @@ public class AccountsAdminView extends VerticalLayout {
         // Die Liste laedt nur beim Oeffnen; neue Konten aus den Apps erscheinen erst hiermit (oder per Reload)
         Button reload = new Button("Aktualisieren", VaadinIcon.REFRESH.create(), e -> reload());
 
-        accountGrid.addColumn(BillingAccount::getUserId).setHeader("UserId").setAutoWidth(true);
-        var nameColumn = accountGrid.addColumn(a -> namesByUserId.getOrDefault(a.getUserId(), ""))
-                .setHeader("Name").setAutoWidth(true);
+        accountGrid.addColumn(a -> a.getLabel() == null ? "" : a.getLabel()).setHeader("E-Mail / Handle").setAutoWidth(true);
+        var nameColumn = accountGrid.addColumn(this::name).setHeader("Name").setAutoWidth(true);
+        var idColumn = accountGrid.addColumn(BillingAccount::getUserId).setHeader("UserId").setAutoWidth(true);
         accountGrid.addComponentColumn(a -> Format.creditsBadge(a.getBalance())).setHeader("Kontostand")
                 .setAutoWidth(true).setFlexGrow(0);
         var sinceColumn = accountGrid.addColumn(a -> Format.dateTime(a.getCreatedAt())).setHeader("Seit")
                 .setAutoWidth(true).setFlexGrow(0);
-        Responsive.hideOnMobile(accountGrid, nameColumn, sinceColumn);
+        Responsive.hideOnMobile(accountGrid, nameColumn, idColumn, sinceColumn);
         accountGrid.asSingleSelect().addValueChangeListener(e -> showEntries(e.getValue()));
         accountGrid.setHeight("40%");
         // 40 % bleiben bei niedrigen Fenstern sonst nur eine Zeile, weitere Konten sind dann unsichtbar
@@ -118,7 +118,9 @@ public class AccountsAdminView extends VerticalLayout {
             entryGrid.setItems();
             return;
         }
-        entryTitle.setText("Buchungen von " + label(account.getUserId()));
+        String name = name(account);
+        String id = account.getLabel() != null ? account.getLabel() : account.getUserId();
+        entryTitle.setText("Buchungen von " + (name.isEmpty() ? id : name + " (" + id + ")"));
         entryGrid.setItems(billing.recentEntries(account.getUserId(), MyCreditsView.MAX_ENTRIES));
     }
 
@@ -126,10 +128,10 @@ public class AccountsAdminView extends VerticalLayout {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Guthaben buchen");
 
-        TextField userField = new TextField("UserId (provider:id)");
+        TextField userField = new TextField("E-Mail / Handle oder UserId (provider:id)");
         userField.setValue(userId);
         userField.setRequired(true);
-        userField.setHelperText("Neue Konten entstehen beim ersten Buchen, mit Startguthaben.");
+        userField.setHelperText("E-Mail bzw. Handle nur für bestehende Konten. Neue Konten entstehen beim ersten Buchen (mit UserId), mit Startguthaben.");
 
         IntegerField creditsField = new IntegerField("Credits");
         creditsField.setHelperText("Positiv = Gutschrift, negativ = Korrektur");
@@ -147,11 +149,11 @@ public class AccountsAdminView extends VerticalLayout {
         Button save = new Button("Buchen", e -> {
             Integer credits = creditsField.getValue();
             if (userField.isEmpty() || credits == null || credits == 0 || noteField.getValue().isBlank()) {
-                Notification.show("Bitte UserId, Credits (nicht 0) und Begründung angeben");
+                Notification.show("Bitte Konto, Credits (nicht 0) und Begründung angeben");
                 return;
             }
-            String target = userField.getValue().trim();
             try {
+                String target = billing.resolveUserId(userField.getValue());
                 var booking = billing.adminBooking(target, credits, noteField.getValue().trim(),
                         currentUser.require().getUserId().toString());
                 dialog.close();
@@ -174,6 +176,14 @@ public class AccountsAdminView extends VerticalLayout {
         Responsive.dialog(dialog, "32em");
         dialog.open();
         (userId.isEmpty() ? userField : creditsField).focus();
+    }
+
+    /** Name aus der App, sonst aus der Benutzerverwaltung des Billing-Dienstes. */
+    private String name(BillingAccount account) {
+        if (account.getDisplayName() != null) {
+            return account.getDisplayName();
+        }
+        return namesByUserId.getOrDefault(account.getUserId(), "");
     }
 
     private String label(String userId) {

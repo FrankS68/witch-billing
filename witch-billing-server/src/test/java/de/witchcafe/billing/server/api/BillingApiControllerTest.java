@@ -64,7 +64,7 @@ class BillingApiControllerTest {
 
     @Test
     void verbrauchWirdFuerDieAppDesKeysGebucht() throws Exception {
-        when(billing.charge("quiz", "github:4711", "ki-fragen", 3, "req-1"))
+        when(billing.charge("quiz", "github:4711", "ki-fragen", 3, "req-1", null, null))
                 .thenReturn(new Booking(42, -6, 94, false));
 
         mvc.perform(postJson("/api/usage", "quiz-test-key", USAGE))
@@ -77,17 +77,17 @@ class BillingApiControllerTest {
 
     @Test
     void hashInGrossbuchstabenWirdAuchErkannt() throws Exception {
-        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any()))
+        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any(), any(), any()))
                 .thenReturn(new Booking(1, -1, 1, false));
 
         mvc.perform(postJson("/api/usage", "games-test-key", USAGE)).andExpect(status().isOk());
 
-        verify(billing).charge("games", "github:4711", "ki-fragen", 3, "req-1");
+        verify(billing).charge("games", "github:4711", "ki-fragen", 3, "req-1", null, null);
     }
 
     @Test
     void beitragWirdGutgeschrieben() throws Exception {
-        when(billing.reward("quiz", "github:4711", "frage-eingereicht", 1, null))
+        when(billing.reward("quiz", "github:4711", "frage-eingereicht", 1, null, null, null))
                 .thenReturn(new Booking(7, 5, 105, false));
 
         mvc.perform(postJson("/api/contributions", "quiz-test-key", """
@@ -98,7 +98,7 @@ class BillingApiControllerTest {
 
     @Test
     void zuWenigGuthabenGibt402MitKontostand() throws Exception {
-        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any()))
+        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any(), any(), any()))
                 .thenThrow(new InsufficientCreditsException("github:4711", 4, 6));
 
         mvc.perform(postJson("/api/usage", "quiz-test-key", USAGE))
@@ -110,7 +110,7 @@ class BillingApiControllerTest {
 
     @Test
     void unbekanntesFeatureGibt404() throws Exception {
-        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any()))
+        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any(), any(), any()))
                 .thenThrow(new UnknownFeatureException("quiz", "ki-fragen", PriceKind.COST));
 
         mvc.perform(postJson("/api/usage", "quiz-test-key", USAGE))
@@ -120,7 +120,7 @@ class BillingApiControllerTest {
 
     @Test
     void ungueltigeAnfrageGibt400() throws Exception {
-        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any()))
+        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("quantity muss > 0 sein"));
 
         mvc.perform(postJson("/api/usage", "quiz-test-key", USAGE))
@@ -165,5 +165,18 @@ class BillingApiControllerTest {
                 .andExpect(jsonPath("$.ads[0].kind").value("HOUSE"))
                 .andExpect(jsonPath("$.ads[0].title").value("Probier den Garten"));
         mvc.perform(get("/api/ads/github:4711")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void kennungUndNameGehenAnDenDienst() throws Exception {
+        when(billing.charge(anyString(), anyString(), anyString(), anyInt(), any(), any(), any()))
+                .thenReturn(new Booking(1, 0, 100, false));
+
+        mvc.perform(postJson("/api/usage", "quiz-test-key", """
+                        {"userId":"mastodon:1160","feature":"spiel","quantity":1,
+                         "userLabel":"fse247@mastodon.social","userName":"fse"}"""))
+                .andExpect(status().isOk());
+
+        verify(billing).charge("quiz", "mastodon:1160", "spiel", 1, null, "fse247@mastodon.social", "fse");
     }
 }

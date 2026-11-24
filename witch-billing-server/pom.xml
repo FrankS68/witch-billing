@@ -21,6 +21,8 @@
     <name>witch-billing-server</name>
 
     <properties>
+        <!-- witch-auth 1.1.3: Redirect-URI fuer Amazon, GitLab, Microsoft, Mastodon vorbelegt -->
+        <witch-auth.version>1.1.3</witch-auth.version>
         <!-- App wird nicht als Maven-Artefakt veroeffentlicht -->
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
